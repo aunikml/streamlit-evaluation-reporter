@@ -1,0 +1,16 @@
+# .gitignore
+
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Database file (important for security and privacy)
+*.db
+*.sqlite3
+
+# Streamlit secrets file
+.streamlit/secrets.toml
