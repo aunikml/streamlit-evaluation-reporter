@@ -1,6 +1,4 @@
 streamlit
 pandas
 plotly
-# The line below tells the installer to install playwright AND THEN
-# run the command to download the necessary browsers.
-playwright && playwright install --with-deps
+playwright
