@@ -66,8 +66,10 @@ with st.sidebar:
         st.rerun()
     st.markdown("---")
 
+    # Show the form if no report has been generated yet
     if 'processed_data' not in st.session_state:
         display_metadata_form(PAGE_TITLE, requires_faculty_name=True)
+    # Once a report is generated, show the export and clear options
     else:
         st.header("Export Report")
         data = st.session_state.processed_data
@@ -80,13 +82,12 @@ with st.sidebar:
                     COLOR_MAP, COMMENT_COLUMN, SCORE_MAPPING, CONVERTED_SCORE_MAX
                 )
                 pdf_bytes = convert_html_to_pdf(html_string)
-
-                # --- THE ONLY CHANGE IS HERE ---
-                # Sanitize each part by replacing spaces with underscores for a cleaner filename
-                fn = metadata['Faculty Name'].replace(' ', '_')
-                cc = metadata['Course Code'].replace(' ', '_')
-                b = metadata['Batch'].replace(' ', '_')
-                s = metadata['Semester'].replace(' ', '_')
+                
+                # Sanitize each part of the metadata for a clean filename
+                fn = metadata.get('Faculty Name', 'Faculty').replace(' ', '_')
+                cc = metadata.get('Course Code', 'Course').replace(' ', '_')
+                b = metadata.get('Batch', 'Batch').replace(' ', '_')
+                s = metadata.get('Semester', 'Semester').replace(' ', '_')
                 
                 # Construct the new, more descriptive filename
                 pdf_filename = f"{fn}_{cc}_{b}_{s}_Report.pdf"
@@ -131,7 +132,8 @@ if 'processed_data' in st.session_state:
         st.subheader("Qualitative Feedback (General Comments)")
         if COMMENT_COLUMN in df.columns:
             comments = df[COMMENT_COLUMN].dropna()
-            non_placeholder_comments = comments[~comments.str.strip().str.lower().isin(['n/a', 'na', 'no', ''])]
+            # FIX: Ensure all comments are treated as strings before filtering to prevent errors
+            non_placeholder_comments = comments[~comments.astype(str).str.strip().str.lower().isin(['n/a', 'na', 'no', ''])]
             if not non_placeholder_comments.empty:
                 for i, comment in enumerate(non_placeholder_comments):
                     st.info(f"**Comment {i+1}:** {comment}")

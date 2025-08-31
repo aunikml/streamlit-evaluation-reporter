@@ -9,6 +9,10 @@ import re
 from urllib.error import URLError
 
 def load_df_from_gsheet_url(url):
+    """
+    Takes a Google Sheet URL, converts it to a CSV export URL, and loads it into a DataFrame.
+    Includes improved, specific error handling for cloud environments.
+    """
     try:
         match_id = re.search(r"/d/([a-zA-Z0-9-_]+)", url)
         match_gid = re.search(r"gid=([0-9]+)", url)
@@ -22,49 +26,73 @@ def load_df_from_gsheet_url(url):
         return df
     except URLError:
         st.error("Network Connection Error: Failed to connect.")
-        st.warning("This may be due to a firewall. Try the 'Upload CSV' option.")
+        st.warning("This may be due to a firewall. Please try the 'Upload CSV' option.")
         return None
     except Exception as e:
         st.error("Could not load data from the Google Sheet link.")
-        st.warning("Please ensure the sheet's sharing is set to 'Anyone with the link'.")
+        st.warning("Please ensure the sheet's sharing setting is set to 'Anyone with the link'.")
         return None
 
 def display_metadata_form(page_type, requires_faculty_name=True):
+    """
+    Creates a reusable form in the sidebar with specific and helpful validation.
+    """
     with st.form("metadata_form"):
         st.info("Fill in the details below and provide your data source.")
+        
         faculty_name = st.text_input("Faculty Name") if requires_faculty_name else None
         program = st.selectbox("Program", ["M.Ed.", "ECD"])
         course_code = st.text_input("Course Code")
         batch = st.text_input("Batch")
         semester = st.selectbox("Semester", ["SUMMER", "FALL", "SPRING"])
         year = st.selectbox("Year", list(range(2025, 2031)))
+        
         st.markdown("---")
+        
         st.write("**Select Data Source**")
-        source_option = st.radio("Choose one:", ("Upload CSV File", "Google Sheet Link"), horizontal=True)
+        source_option = st.radio(
+            "Choose one:",
+            ("Upload CSV File", "Google Sheet Link"),
+            horizontal=True
+        )
         uploaded_file = st.file_uploader("1. Upload CSV File", type="csv")
         gsheet_url = st.text_input("2. Or, Paste Google Sheet Link")
+
         submitted = st.form_submit_button("Generate Report")
+
         if submitted:
             if requires_faculty_name and not faculty_name:
                 st.warning("Please fill in the 'Faculty Name'."); st.stop()
-            if not course_code: st.warning("Please fill in the 'Course Code'."); st.stop()
-            if not batch: st.warning("Please fill in the 'Batch'."); st.stop()
+            if not course_code:
+                st.warning("Please fill in the 'Course Code'."); st.stop()
+            if not batch:
+                st.warning("Please fill in the 'Batch'."); st.stop()
+            
             df = None
             if source_option == "Upload CSV File":
-                if uploaded_file is None: st.warning("Please upload a CSV file."); st.stop()
+                if uploaded_file is None:
+                    st.warning("Please upload a CSV file."); st.stop()
                 df = pd.read_csv(uploaded_file)
             else:
-                if not gsheet_url: st.warning("Please paste a Google Sheet link."); st.stop()
+                if not gsheet_url:
+                    st.warning("Please paste a Google Sheet link."); st.stop()
                 df = load_df_from_gsheet_url(gsheet_url)
-                if df is None: st.stop()
+                if df is None:
+                    st.stop()
+            
             with st.spinner("Processing data..."):
-                metadata = {"Program": program, "Course Code": course_code, "Batch": batch, "Semester": f"{semester} {year}"}
+                metadata = {
+                    "Program": program, "Course Code": course_code, "Batch": batch,
+                    "Semester": f"{semester} {year}"
+                }
                 if requires_faculty_name and faculty_name:
                     metadata["Faculty Name"] = faculty_name
+                
                 st.session_state.processed_data = {"df": df, "metadata": metadata}
                 st.rerun()
 
 def create_pie_chart(df, col_name, category_order, color_map, chart_title="Response Distribution"):
+    """Creates a styled Plotly pie chart for display in the Streamlit UI."""
     st.markdown(f"#### {col_name}")
     if df[col_name].dtype == 'object' and ': ' in str(df[col_name].iloc[0]):
         ratings = df[col_name].str.split(': ').str[1].dropna()
@@ -72,12 +100,17 @@ def create_pie_chart(df, col_name, category_order, color_map, chart_title="Respo
         ratings = df[col_name].dropna()
     rating_counts = ratings.value_counts().reindex(category_order, fill_value=0).reset_index()
     rating_counts.columns = ['Rating', 'Count']
-    fig = px.pie(rating_counts, names='Rating', values='Count', hole=0.4, color='Rating', color_discrete_map=color_map)
+    fig = px.pie(
+        rating_counts, names='Rating', values='Count', hole=0.4,
+        color='Rating', color_discrete_map=color_map
+    )
     fig.update_traces(textposition='inside', textinfo='percent+label', pull=[0.05, 0, 0, 0, 0])
-    fig.update_layout(showlegend=False, uniformtext_minsize=12, uniformtext_mode='hide', title={'text': chart_title, 'x': 0.5, 'xanchor': 'center'})
+    fig.update_layout(showlegend=False, uniformtext_minsize=12, uniformtext_mode='hide',
+                      title={'text': chart_title, 'x': 0.5, 'xanchor': 'center'})
     return fig
 
 def calculate_scores(df, question_columns_slice, score_mapping, new_max_score=60):
+    """Performs the core score calculations and returns the results."""
     question_columns = df.columns[question_columns_slice]
     score_results = []
     for col in question_columns:
@@ -97,6 +130,7 @@ def calculate_scores(df, question_columns_slice, score_mapping, new_max_score=60
     return scores_df, total_avg_sum, converted_score, overall_average, max_possible_sum
 
 def generate_report_html(df, report_title, metadata, question_columns_slice, category_order, color_map, comment_column, score_mapping, new_max_score=60):
+    """Generates a self-contained HTML string for the entire report, optimized for PDF conversion."""
     question_columns = df.columns[question_columns_slice]
     metadata_html = "<table>"
     display_order = ['Faculty Name', 'Program', 'Course Code', 'Batch', 'Semester']
@@ -147,10 +181,12 @@ def generate_report_html(df, report_title, metadata, question_columns_slice, cat
     html += "<div class='comments-section'>"
     if comment_column in df.columns:
         comments = df[comment_column].dropna()
-        non_placeholder_comments = comments[~comments.str.strip().str.lower().isin(['n/a', 'na', 'no', ''])]
+        # FIX: Ensure all comments are treated as strings before filtering
+        non_placeholder_comments = comments[~comments.astype(str).str.strip().str.lower().isin(['n/a', 'na', 'no', ''])]
         if not non_placeholder_comments.empty:
             html += '<h3>Qualitative Feedback</h3>'
-            for comment in non_placeholder_comments: html += f'<div class="comment"><p>{comment}</p></div>'
+            for comment in non_placeholder_comments:
+                html += f'<div class="comment"><p>{comment}</p></div>'
     html += "</div>"
     scores_df, total_avg_sum, converted_score, overall_average, max_possible_sum = calculate_scores(df, question_columns_slice, score_mapping, new_max_score)
     html += '<div class="score-section"><h3>Score Summary</h3><table><thead><tr><th>Attribute</th><th>Average Score</th></tr></thead><tbody>'
@@ -169,10 +205,12 @@ def generate_report_html(df, report_title, metadata, question_columns_slice, cat
     return html
 
 def convert_html_to_pdf(html_string):
+    """Uses Playwright to convert an HTML string to a PDF."""
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
         page.set_content(html_string)
+        # Give the JS time to render the charts before printing to PDF
         page.wait_for_timeout(2000) 
         pdf_bytes = page.pdf(format="A4", print_background=True, margin={"top": "50px", "bottom": "50px"})
         browser.close()

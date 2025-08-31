@@ -51,7 +51,7 @@ def display_score_analysis(df):
     st.dataframe(scores_df.style.format({"Average Score": "{:.2f}"}), use_container_width=True)
     st.markdown("---")
 
-    # Re-implement the specific three cascading score cards as originally requested
+    # Implement the specific three cascading score cards as originally requested
     col1, col2, col3 = st.columns(3)
     with col1:
         # Card 1: Total sum of averages (out of 20 for 4 questions)
@@ -134,7 +134,8 @@ if 'processed_data' in st.session_state:
         st.subheader("Qualitative Feedback (General Comments)")
         if COMMENT_COLUMN in df.columns:
             comments = df[COMMENT_COLUMN].dropna()
-            non_placeholder_comments = comments[~comments.str.strip().str.lower().isin(['n/a', 'na', 'no', ''])]
+            # FIX: Ensure all comments are treated as strings before filtering to prevent errors
+            non_placeholder_comments = comments[~comments.astype(str).str.strip().str.lower().isin(['n/a', 'na', 'no', ''])]
             if not non_placeholder_comments.empty:
                 for i, comment in enumerate(non_placeholder_comments):
                     st.info(f"**Comment {i+1}:** {comment}")
