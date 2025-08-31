@@ -28,10 +28,26 @@ except ImportError as e:
     st.stop()
 
 # --- Page-Specific Configurations ---
+# The 'Poor' category has been removed from all configurations.
 PAGE_TITLE = "Faculty Evaluation"
-SCORE_MAPPING = {'Excellent': 5, 'Very Good': 4, 'Good': 3, 'Satisfactory': 2, 'Poor': 1}
-CATEGORY_ORDER = ["Excellent", "Very Good", "Good", "Satisfactory", "Poor"]
-COLOR_MAP = {"Excellent": "#2ca02c", "Very Good": "#1f77b4", "Good": "#ff7f0e", "Satisfactory": "#d62728", "Poor": "#9467bd"}
+
+SCORE_MAPPING = {
+    'A: Excellent': 5,
+    'B: Very Good': 4,
+    'C: Good': 3,
+    'D: Satisfactory': 2,
+    'E: Not Satisfactory': 1
+}
+
+CATEGORY_ORDER = ["Excellent", "Very Good", "Good", "Satisfactory", "Not Satisfactory"]
+
+COLOR_MAP = {
+    "Excellent": "#2ca02c",
+    "Very Good": "#1f77b4",
+    "Good": "#ff7f0e",
+    "Satisfactory": "#d62728",
+    "Not Satisfactory": "#9467bd"
+}
 COMMENT_COLUMN = 'General comments'
 QUESTION_COLUMNS_SLICE = slice(1, 9)
 CONVERTED_SCORE_MAX = 60
@@ -94,7 +110,7 @@ with st.sidebar:
                 
                 st.download_button(
                     "Download PDF", pdf_bytes, 
-                    pdf_filename, # Use the new filename
+                    pdf_filename,
                     "application/pdf"
                 )
         
@@ -122,17 +138,16 @@ if 'processed_data' in st.session_state:
             col1, col2 = st.columns(2)
             with col1:
                 fig1 = create_pie_chart(df, question_columns[i], CATEGORY_ORDER, COLOR_MAP)
-                st.plotly_chart(fig1, use_container_width=True, key=f"faculty_{question_columns[i]}")
+                st.plotly_chart(fig1, use_container_width=True)
             if (i + 1) < len(question_columns):
                 with col2:
                     fig2 = create_pie_chart(df, question_columns[i+1], CATEGORY_ORDER, COLOR_MAP)
-                    st.plotly_chart(fig2, use_container_width=True, key=f"faculty_{question_columns[i+1]}")
+                    st.plotly_chart(fig2, use_container_width=True)
         
         st.markdown("---")
         st.subheader("Qualitative Feedback (General Comments)")
         if COMMENT_COLUMN in df.columns:
             comments = df[COMMENT_COLUMN].dropna()
-            # FIX: Ensure all comments are treated as strings before filtering to prevent errors
             non_placeholder_comments = comments[~comments.astype(str).str.strip().str.lower().isin(['n/a', 'na', 'no', ''])]
             if not non_placeholder_comments.empty:
                 for i, comment in enumerate(non_placeholder_comments):

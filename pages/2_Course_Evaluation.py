@@ -29,29 +29,46 @@ except ImportError as e:
 
 # --- Page-Specific Configurations ---
 PAGE_TITLE = "Course Evaluation"
-SCORE_MAPPING = {'Strongly Agree': 5, 'Agree': 4, 'Neutral': 3, 'Disagree': 2, 'Strongly Disagree': 1}
+
+# --- UPDATED: Corrected the score and category mappings as per your request ---
+SCORE_MAPPING = {
+    'A: Strongly Agree': 5,
+    'B: Agree': 4,
+    'C: Neutral': 3,
+    'D: Disagree': 2,
+    'E: Strongly Disagree': 1
+}
+
 CATEGORY_ORDER = ["Strongly Agree", "Agree", "Neutral", "Disagree", "Strongly Disagree"]
-COLOR_MAP = {"Strongly Agree": "#2ca02c", "Agree": "#1f7b14", "Neutral": "#ff7f0e", "Disagree": "#d62728", "Strongly Disagree": "#9467bd"}
-COMMENT_COLUMN = 'General comment '  # Correctly includes the trailing space from the CSV
-QUESTION_COLUMNS_SLICE = slice(1, 5)  # For the 4 questions in this CSV
-CONVERTED_SCORE_MAX = 15  # The specific conversion value for this report
+
+COLOR_MAP = {
+    "Strongly Agree": "#2ca02c",
+    "Agree": "#1f7b14",
+    "Neutral": "#ff7f0e",
+    "Disagree": "#d62728",
+    "Strongly Disagree": "#9467bd"
+}
+COMMENT_COLUMN = 'General comment '
+QUESTION_COLUMNS_SLICE = slice(1, 5)
+CONVERTED_SCORE_MAX = 15
 
 def display_score_analysis(df):
     """
     Displays the score analysis UI, with calculations specific to the Course Evaluation report.
+    This function ensures consistency between the UI and the PDF report.
     """
     st.subheader("Score Summary")
     
-    # Use the generic calculation function to get base numbers
+    # Call the central calculation function to get the base numbers.
     scores_df, total_avg_sum, _, overall_average, max_possible_sum = calculate_scores(
-        df, QUESTION_COLUMNS_SLICE, SCORE_MAPPING
+        df, QUESTION_COLUMNS_SLICE, SCORE_MAPPING, CONVERTED_SCORE_MAX
     )
     
     st.write("The table below shows the average score for each attribute on a scale of 1 to 5.")
     st.dataframe(scores_df.style.format({"Average Score": "{:.2f}"}), use_container_width=True)
     st.markdown("---")
 
-    # Implement the specific three cascading score cards as originally requested
+    # Implement the specific three cascading score cards as originally requested.
     col1, col2, col3 = st.columns(3)
     with col1:
         # Card 1: Total sum of averages (out of 20 for 4 questions)
@@ -77,11 +94,9 @@ with st.sidebar:
         st.rerun()
     st.markdown("---")
 
-    # Show the form if no report has been generated yet
     if 'processed_data' not in st.session_state:
         # Call the form function, specifying that Faculty Name is NOT required
         display_metadata_form(PAGE_TITLE, requires_faculty_name=False)
-    # Once a report is generated, show the export and clear options
     else:
         st.header("Export Report")
         data = st.session_state.processed_data
@@ -113,7 +128,6 @@ if 'processed_data' in st.session_state:
     tab1, tab2 = st.tabs(["📊 Evaluation Report", "📄 Raw Data"])
     with tab1:
         st.header("Evaluation Report")
-        # Display the metadata, which will not include Faculty Name
         for key, value in metadata.items():
             st.markdown(f"**{key}:** {value}")
         st.metric(label="Total Responses Received", value=len(df))
@@ -124,17 +138,16 @@ if 'processed_data' in st.session_state:
             col1, col2 = st.columns(2)
             with col1:
                 fig1 = create_pie_chart(df, question_columns[i], CATEGORY_ORDER, COLOR_MAP)
-                st.plotly_chart(fig1, use_container_width=True, key=f"course_{question_columns[i]}")
+                st.plotly_chart(fig1, use_container_width=True)
             if (i + 1) < len(question_columns):
                 with col2:
                     fig2 = create_pie_chart(df, question_columns[i+1], CATEGORY_ORDER, COLOR_MAP)
-                    st.plotly_chart(fig2, use_container_width=True, key=f"course_{question_columns[i+1]}")
+                    st.plotly_chart(fig2, use_container_width=True)
         
         st.markdown("---")
         st.subheader("Qualitative Feedback (General Comments)")
         if COMMENT_COLUMN in df.columns:
             comments = df[COMMENT_COLUMN].dropna()
-            # FIX: Ensure all comments are treated as strings before filtering to prevent errors
             non_placeholder_comments = comments[~comments.astype(str).str.strip().str.lower().isin(['n/a', 'na', 'no', ''])]
             if not non_placeholder_comments.empty:
                 for i, comment in enumerate(non_placeholder_comments):
