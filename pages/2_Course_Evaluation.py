@@ -7,20 +7,16 @@ import sys
 import platform
 import asyncio
 
-# --- SECURITY GATE: Must be at the top of every page ---
+# --- SECURITY GATE & FIXES: Ensures user is logged in and all modules can be imported ---
 if not st.session_state.get('authenticated', False):
     st.error("Please log in to access this page.")
     st.stop()
-# --- END OF SECURITY GATE ---
-
-# --- ROBUST FIX for Windows asyncio and Module Imports ---
 if platform.system() == 'Windows':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 if project_root not in sys.path:
     sys.path.append(project_root)
-# --- END OF FIX ---
 
 try:
     from utils import (
@@ -36,25 +32,36 @@ PAGE_TITLE = "Course Evaluation"
 SCORE_MAPPING = {'Strongly Agree': 5, 'Agree': 4, 'Neutral': 3, 'Disagree': 2, 'Strongly Disagree': 1}
 CATEGORY_ORDER = ["Strongly Agree", "Agree", "Neutral", "Disagree", "Strongly Disagree"]
 COLOR_MAP = {"Strongly Agree": "#2ca02c", "Agree": "#1f7b14", "Neutral": "#ff7f0e", "Disagree": "#d62728", "Strongly Disagree": "#9467bd"}
-# --- FIX 1: Add trailing space to match the CSV header exactly ---
-COMMENT_COLUMN = 'General comment '
-QUESTION_COLUMNS_SLICE = slice(1, 5)
-CONVERTED_SCORE_MAX = 15
+COMMENT_COLUMN = 'General comment '  # Correctly includes the trailing space from the CSV
+QUESTION_COLUMNS_SLICE = slice(1, 5)  # For the 4 questions in this CSV
+CONVERTED_SCORE_MAX = 15  # The specific conversion value for this report
 
 def display_score_analysis(df):
+    """
+    Displays the score analysis UI, with calculations specific to the Course Evaluation report.
+    """
     st.subheader("Score Summary")
-    scores_df, total_avg_sum, converted_score, overall_average, max_possible_sum = calculate_scores(
-        df, QUESTION_COLUMNS_SLICE, SCORE_MAPPING, CONVERTED_SCORE_MAX
+    
+    # Use the generic calculation function to get base numbers
+    scores_df, total_avg_sum, _, overall_average, max_possible_sum = calculate_scores(
+        df, QUESTION_COLUMNS_SLICE, SCORE_MAPPING
     )
+    
     st.write("The table below shows the average score for each attribute on a scale of 1 to 5.")
     st.dataframe(scores_df.style.format({"Average Score": "{:.2f}"}), use_container_width=True)
     st.markdown("---")
+
+    # Re-implement the specific three cascading score cards as originally requested
     col1, col2, col3 = st.columns(3)
     with col1:
+        # Card 1: Total sum of averages (out of 20 for 4 questions)
         st.metric(label=f"Total Score (out of {max_possible_sum})", value=f"{total_avg_sum:.2f}")
     with col2:
+        # Card 2: The sum converted to be out of 15
+        converted_score = (total_avg_sum / max_possible_sum) * CONVERTED_SCORE_MAX if max_possible_sum > 0 else 0
         st.metric(label=f"Converted Score (out of {CONVERTED_SCORE_MAX})", value=f"{converted_score:.2f}")
     with col3:
+        # Card 3: The average of the averages
         st.metric(label="Overall Average Rating (out of 5)", value=f"{overall_average:.2f}")
 
 # --- Main Page UI ---
@@ -70,9 +77,11 @@ with st.sidebar:
         st.rerun()
     st.markdown("---")
 
+    # Show the form if no report has been generated yet
     if 'processed_data' not in st.session_state:
-        # --- FIX 2: Call the form function without requiring faculty name ---
+        # Call the form function, specifying that Faculty Name is NOT required
         display_metadata_form(PAGE_TITLE, requires_faculty_name=False)
+    # Once a report is generated, show the export and clear options
     else:
         st.header("Export Report")
         data = st.session_state.processed_data
@@ -104,7 +113,7 @@ if 'processed_data' in st.session_state:
     tab1, tab2 = st.tabs(["📊 Evaluation Report", "📄 Raw Data"])
     with tab1:
         st.header("Evaluation Report")
-        # The loop will now correctly display metadata without Faculty Name
+        # Display the metadata, which will not include Faculty Name
         for key, value in metadata.items():
             st.markdown(f"**{key}:** {value}")
         st.metric(label="Total Responses Received", value=len(df))
@@ -140,6 +149,6 @@ if 'processed_data' in st.session_state:
 
     with tab2:
         st.header("Full Data Preview")
-        st.dataframe(df)
+        st.dataframe(df, use_container_width=True)
 else:
     st.info("Please fill in the details in the sidebar and click 'Generate Report' to begin.")

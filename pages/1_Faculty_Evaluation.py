@@ -7,21 +7,16 @@ import sys
 import platform
 import asyncio
 
-# --- SECURITY GATE: Must be at the top of every page ---
-# This ensures that the user is logged in before any other code is executed.
+# --- SECURITY GATE & FIXES: Ensures user is logged in and all modules can be imported ---
 if not st.session_state.get('authenticated', False):
     st.error("Please log in to access this page.")
     st.stop()
-# --- END OF SECURITY GATE ---
-
-# --- ROBUST FIX for Windows asyncio and Module Imports ---
 if platform.system() == 'Windows':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 if project_root not in sys.path:
     sys.path.append(project_root)
-# --- END OF FIX ---
 
 try:
     from utils import (
@@ -42,6 +37,7 @@ QUESTION_COLUMNS_SLICE = slice(1, 9)
 CONVERTED_SCORE_MAX = 60
 
 def display_score_analysis(df):
+    """Displays the score analysis UI for this page."""
     st.subheader("Score Summary")
     scores_df, total_avg_sum, converted_score, overall_average, max_possible_sum = calculate_scores(
         df, QUESTION_COLUMNS_SLICE, SCORE_MAPPING, CONVERTED_SCORE_MAX
@@ -65,15 +61,14 @@ st.title(f"🧑‍🏫 {PAGE_TITLE} Report Builder")
 with st.sidebar:
     st.write(f"Logged in as **{st.session_state.username}**")
     if st.button("Logout", key="logout_faculty"):
-        # Clear all session state variables to log out
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
     st.markdown("---")
 
-    # Show the form if no report has been generated yet for this session
+    # Show the form if no report has been generated yet
     if 'processed_data' not in st.session_state:
-        display_metadata_form(PAGE_TITLE)
+        display_metadata_form(PAGE_TITLE, requires_faculty_name=True)
     # Once a report is generated, show the export and clear options
     else:
         st.header("Export Report")
@@ -140,6 +135,6 @@ if 'processed_data' in st.session_state:
 
     with tab2:
         st.header("Full Data Preview")
-        st.dataframe(df)
+        st.dataframe(df, use_container_width=True)
 else:
     st.info("Please fill in the details in the sidebar and click 'Generate Report' to begin.")
