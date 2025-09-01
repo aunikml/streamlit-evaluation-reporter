@@ -29,8 +29,6 @@ except ImportError as e:
 
 # --- Page-Specific Configurations ---
 PAGE_TITLE = "Course Evaluation"
-
-# --- UPDATED: Corrected the score and category mappings as per your request ---
 SCORE_MAPPING = {
     'A: Strongly Agree': 5,
     'B: Agree': 4,
@@ -38,9 +36,7 @@ SCORE_MAPPING = {
     'D: Disagree': 2,
     'E: Strongly Disagree': 1
 }
-
 CATEGORY_ORDER = ["Strongly Agree", "Agree", "Neutral", "Disagree", "Strongly Disagree"]
-
 COLOR_MAP = {
     "Strongly Agree": "#2ca02c",
     "Agree": "#1f7b14",
@@ -55,11 +51,9 @@ CONVERTED_SCORE_MAX = 15
 def display_score_analysis(df):
     """
     Displays the score analysis UI, with calculations specific to the Course Evaluation report.
-    This function ensures consistency between the UI and the PDF report.
     """
     st.subheader("Score Summary")
     
-    # Call the central calculation function to get the base numbers.
     scores_df, total_avg_sum, _, overall_average, max_possible_sum = calculate_scores(
         df, QUESTION_COLUMNS_SLICE, SCORE_MAPPING, CONVERTED_SCORE_MAX
     )
@@ -68,17 +62,13 @@ def display_score_analysis(df):
     st.dataframe(scores_df.style.format({"Average Score": "{:.2f}"}), use_container_width=True)
     st.markdown("---")
 
-    # Implement the specific three cascading score cards as originally requested.
     col1, col2, col3 = st.columns(3)
     with col1:
-        # Card 1: Total sum of averages (out of 20 for 4 questions)
         st.metric(label=f"Total Score (out of {max_possible_sum})", value=f"{total_avg_sum:.2f}")
     with col2:
-        # Card 2: The sum converted to be out of 15
         converted_score = (total_avg_sum / max_possible_sum) * CONVERTED_SCORE_MAX if max_possible_sum > 0 else 0
         st.metric(label=f"Converted Score (out of {CONVERTED_SCORE_MAX})", value=f"{converted_score:.2f}")
     with col3:
-        # Card 3: The average of the averages
         st.metric(label="Overall Average Rating (out of 5)", value=f"{overall_average:.2f}")
 
 # --- Main Page UI ---
@@ -95,7 +85,6 @@ with st.sidebar:
     st.markdown("---")
 
     if 'processed_data' not in st.session_state:
-        # Call the form function, specifying that Faculty Name is NOT required
         display_metadata_form(PAGE_TITLE, requires_faculty_name=False)
     else:
         st.header("Export Report")
@@ -138,11 +127,13 @@ if 'processed_data' in st.session_state:
             col1, col2 = st.columns(2)
             with col1:
                 fig1 = create_pie_chart(df, question_columns[i], CATEGORY_ORDER, COLOR_MAP)
-                st.plotly_chart(fig1, use_container_width=True)
+                # FIX: Added a unique key based on the column name
+                st.plotly_chart(fig1, use_container_width=True, key=f"course_chart_{question_columns[i]}")
             if (i + 1) < len(question_columns):
                 with col2:
                     fig2 = create_pie_chart(df, question_columns[i+1], CATEGORY_ORDER, COLOR_MAP)
-                    st.plotly_chart(fig2, use_container_width=True)
+                    # FIX: Added a unique key based on the column name
+                    st.plotly_chart(fig2, use_container_width=True, key=f"course_chart_{question_columns[i+1]}")
         
         st.markdown("---")
         st.subheader("Qualitative Feedback (General Comments)")

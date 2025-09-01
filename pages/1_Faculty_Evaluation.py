@@ -28,9 +28,7 @@ except ImportError as e:
     st.stop()
 
 # --- Page-Specific Configurations ---
-# The 'Poor' category has been removed from all configurations.
 PAGE_TITLE = "Faculty Evaluation"
-
 SCORE_MAPPING = {
     'A: Excellent': 5,
     'B: Very Good': 4,
@@ -38,9 +36,7 @@ SCORE_MAPPING = {
     'D: Satisfactory': 2,
     'E: Not Satisfactory': 1
 }
-
 CATEGORY_ORDER = ["Excellent", "Very Good", "Good", "Satisfactory", "Not Satisfactory"]
-
 COLOR_MAP = {
     "Excellent": "#2ca02c",
     "Very Good": "#1f77b4",
@@ -105,7 +101,6 @@ with st.sidebar:
                 b = metadata.get('Batch', 'Batch').replace(' ', '_')
                 s = metadata.get('Semester', 'Semester').replace(' ', '_')
                 
-                # Construct the new, more descriptive filename
                 pdf_filename = f"{fn}_{cc}_{b}_{s}_Report.pdf"
                 
                 st.download_button(
@@ -138,11 +133,13 @@ if 'processed_data' in st.session_state:
             col1, col2 = st.columns(2)
             with col1:
                 fig1 = create_pie_chart(df, question_columns[i], CATEGORY_ORDER, COLOR_MAP)
-                st.plotly_chart(fig1, use_container_width=True)
+                # FIX: Added a unique key based on the column name
+                st.plotly_chart(fig1, use_container_width=True, key=f"faculty_chart_{question_columns[i]}")
             if (i + 1) < len(question_columns):
                 with col2:
                     fig2 = create_pie_chart(df, question_columns[i+1], CATEGORY_ORDER, COLOR_MAP)
-                    st.plotly_chart(fig2, use_container_width=True)
+                    # FIX: Added a unique key based on the column name
+                    st.plotly_chart(fig2, use_container_width=True, key=f"faculty_chart_{question_columns[i+1]}")
         
         st.markdown("---")
         st.subheader("Qualitative Feedback (General Comments)")
