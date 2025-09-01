@@ -133,13 +133,13 @@ if 'processed_data' in st.session_state:
             col1, col2 = st.columns(2)
             with col1:
                 fig1 = create_pie_chart(df, question_columns[i], CATEGORY_ORDER, COLOR_MAP)
-                # FIX: Added a unique key based on the column name
-                st.plotly_chart(fig1, use_container_width=True, key=f"faculty_chart_{question_columns[i]}")
+                # FIX: Use a simple and robust key based on the loop index
+                st.plotly_chart(fig1, use_container_width=True, key=f"faculty_chart_{i}")
             if (i + 1) < len(question_columns):
                 with col2:
                     fig2 = create_pie_chart(df, question_columns[i+1], CATEGORY_ORDER, COLOR_MAP)
-                    # FIX: Added a unique key based on the column name
-                    st.plotly_chart(fig2, use_container_width=True, key=f"faculty_chart_{question_columns[i+1]}")
+                    # FIX: Use a simple and robust key based on the loop index
+                    st.plotly_chart(fig2, use_container_width=True, key=f"faculty_chart_{i+1}")
         
         st.markdown("---")
         st.subheader("Qualitative Feedback (General Comments)")
