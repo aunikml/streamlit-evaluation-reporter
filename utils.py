@@ -280,15 +280,39 @@ def generate_report_html(df, report_title, metadata, question_columns_slice, cat
 
 
 # -------------------------------
-# PDF Export
+# PDF Export (FIXED)
 # -------------------------------
 def convert_html_to_pdf(html_string):
-    """Uses Playwright to convert an HTML string to a PDF."""
+    """Uses Playwright to convert an HTML string to a PDF, ensuring images load first."""
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        page.set_content(html_string)
-        page.wait_for_timeout(2000)
+        page.set_content(html_string, wait_until="load")
+
+        # Ensure all images are fully loaded before exporting
+        page.evaluate("""
+            () => new Promise((resolve) => {
+                const imgs = Array.from(document.images);
+                if (imgs.length === 0) { resolve(); return; }
+                let loaded = 0;
+                imgs.forEach(img => {
+                    if (img.complete) {
+                        loaded++;
+                        if (loaded === imgs.length) resolve();
+                    } else {
+                        img.addEventListener('load', () => {
+                            loaded++;
+                            if (loaded === imgs.length) resolve();
+                        });
+                        img.addEventListener('error', () => {
+                            loaded++;
+                            if (loaded === imgs.length) resolve();
+                        });
+                    }
+                });
+            })
+        """)
+
         pdf_bytes = page.pdf(
             format="A4",
             print_background=True,
